@@ -62,26 +62,37 @@ function preprocessModule(module, options, content){
     return content;
 }
 
-// transform relative dependencies to dojo/* for dojo core module
-function resolveCoreModuleDependency(package_name, core_path, resource, dep_str){
-    if (!dep_str || dep_str[0] != '.') return dep_str;
-    if (dep_str == '.') dep_str = path.basename(resource, path.extname(resource));
-    // for relative paths only:
-    var res = path.resolve(path.dirname(resource), dep_str).substr(core_path.length).replace(/\\/g, '/');
-    if (res[0] != '/') res = '/' + res[0];
-    return package_name + res;
+function normalizeDependencyName(packages, resourcePath, dependencyPath) {
+    if (!dependencyPath || dependencyPath[0] != '.') {
+        return dependencyPath;
+    }
+
+    for (let package in packages) {
+        let packagePath = packages[package];
+        if (resourcePath.startsWith(packagePath)) {
+            if (dependencyPath !== '.') {
+                resourcePath = path.resolve(path.dirname(resourcePath), dependencyPath);
+            }
+            resourcePath = package + resourcePath.substr(packagePath.length);
+            resourcePath = resourcePath.replace(/\\/g, '/');
+            resourcePath = resourcePath.replace(/\.js$/, '');
+            return resourcePath;
+        }
+    }
 }
 
 // Normalize module paths (resolve relative paths in dojo core module)
 function normalizeDependency(module, options, dep){
     if (module.isCore){
         // resource from core module
-        var loaders = dep.loaders.map(function(m){ return resolveCoreModuleDependency('dojo', options.packages.dojo, module.resourcePath, m); });
+        var loaders = dep.loaders.map(function(m) {
+            return normalizeDependencyName(options.packages, module.resourcePath, m);
+        });
         return {
             loaders: loaders,
-            main: resolveCoreModuleDependency('dojo', options.packages.dojo, module.resourcePath, dep.main),
-            conditionTrue: resolveCoreModuleDependency('dojo', options.packages.dojo, module.resourcePath, dep.conditionTrue),
-            conditionFalse: resolveCoreModuleDependency('dojo', options.packages.dojo, module.resourcePath, dep.conditionFalse)
+            main: normalizeDependencyName(options.packages, module.resourcePath, dep.main),
+            conditionTrue: normalizeDependencyName(options.packages, module.resourcePath, dep.conditionTrue),
+            conditionFalse: normalizeDependencyName(options.packages, module.resourcePath, dep.conditionFalse)
         }
     }
     return dep;
@@ -233,8 +244,8 @@ function DojoWebpackLoader(content){
             append: ""
         }
     };
-    if (module.isCore) module.normalizedName = resolveCoreModuleDependency('dojo', options.packages.dojo, this.resourcePath, '.');
-    else if (module.isDijit) module.normalizedName = resolveCoreModuleDependency('dijit', options.packages.dijit, this.resourcePath, '.');
+
+    module.normalizedName = normalizeDependencyName(packages, this.resourcePath, '.');
 
     // Parse module
     var content = preprocessModule(module, options, content);
