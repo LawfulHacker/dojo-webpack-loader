@@ -191,9 +191,9 @@ function processNlsModule(module, parsed, options){
         var f = new Function("'using strict'; return " + parsed.moduleBody + ";");
         var nls_descr = f();
         if (nls_descr && nls_descr.root){
-            var res_nls = {
+            var res_nls = Object.assign({}, nls_descr.root, {
                 root: nls_descr.root
-            };
+            });
             if (options.includeLanguages){
                 options.includeLanguages.forEach(function(lang){
                    if (nls_descr[lang]){
