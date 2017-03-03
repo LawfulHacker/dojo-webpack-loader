@@ -10,7 +10,7 @@ function loaderLibDependency(module, dep_str){
 // Change content of module on load
 function preprocessModule(module, options, content){
     var register_in_dojo_require = module.isNls && module.normalizedName;
-    
+
     switch (module.normalizedName) {
         // for dojo/has - inject staticHasFeatures
         case 'dojo/has':
@@ -76,12 +76,12 @@ function resolveCoreModuleDependency(package_name, core_path, resource, dep_str)
 function normalizeDependency(module, options, dep){
     if (module.isCore){
         // resource from core module
-        var loaders = dep.loaders.map(function(m){ return resolveCoreModuleDependency('dojo', options.dojoCorePath, module.resourcePath, m); });
+        var loaders = dep.loaders.map(function(m){ return resolveCoreModuleDependency('dojo', options.packages.dojo, module.resourcePath, m); });
         return {
             loaders: loaders,
-            main: resolveCoreModuleDependency('dojo', options.dojoCorePath, module.resourcePath, dep.main),
-            conditionTrue: resolveCoreModuleDependency('dojo', options.dojoCorePath, module.resourcePath, dep.conditionTrue),
-            conditionFalse: resolveCoreModuleDependency('dojo', options.dojoCorePath, module.resourcePath, dep.conditionFalse)
+            main: resolveCoreModuleDependency('dojo', options.packages.dojo, module.resourcePath, dep.main),
+            conditionTrue: resolveCoreModuleDependency('dojo', options.packages.dojo, module.resourcePath, dep.conditionTrue),
+            conditionFalse: resolveCoreModuleDependency('dojo', options.packages.dojo, module.resourcePath, dep.conditionFalse)
         }
     }
     return dep;
@@ -151,9 +151,8 @@ function mapDependency(module, options, dep){
                 else throw new Error('DojoWebpackLoader: dojo/request/default cannot choose loader');
                 break;
             case 'dojo/text':
-                // use webpack raw-loader instead of dojo/text
-                result_loaders.push("raw");
-                break;
+                // use webpack to load the file
+                return dep.main;
             case 'dojo/i18n':
                 // Will be loaded via DojoWebpackLoader
                 break;
@@ -174,7 +173,7 @@ function mapDependency(module, options, dep){
     return (result_loaders.length ? result_loaders.join("!") + "!" : "") + result_module;
 }
 
-// Set map of 
+// Set map of
 function processNlsModule(module, parsed, options){
     try {
         var f = new Function("'using strict'; return " + parsed.moduleBody + ";");
@@ -204,20 +203,23 @@ function processNlsModule(module, parsed, options){
 
 function DojoWebpackLoader(content){
     if (this.cacheable) this.cacheable();
+
+    let packages = this._compiler.options.resolve.alias;
+
+    if (!packages.dojo) throw new Error("DojoWebpackLoader: dojo alias is not set");
     // console.log("-----------------------")
     // console.log(this.resourcePath);
 
     // Prepare options
-    var dojoWebpackLoaderOptions = this.options.dojoWebpackLoader;
+    var dojoWebpackLoaderOptions = this.query.dojoWebpackLoader;
     var options = Object.assign({}, defaultOptions, dojoWebpackLoaderOptions);
     options.staticHasFeatures = Object.assign({}, defaultOptions.staticHasFeatures, dojoWebpackLoaderOptions.staticHasFeatures);
-
-    if (!options.dojoCorePath) throw new Error("DojoWebpackLoader: dojoWebpackLoader.dojoCorePath option is not set");
+    options.packages = packages;
 
     // Prepare module
     var module = {
-        isCore: this.resourcePath.substr(0, options.dojoCorePath.length) == options.dojoCorePath,
-        isDijit: options.dojoDijitPath ? this.resourcePath.substr(0, options.dojoDijitPath.length) == options.dojoDijitPath : false,
+        isCore: this.resourcePath.substr(0, options.packages.dojo.length) == options.packages.dojo,
+        isDijit: options.packages.dijit ? this.resourcePath.substr(0, options.packages.dijit.length) == options.packages.dijit : false,
         isNls: this.resourcePath.match(/nls[\\\/](.*?[\\\/])?.*$/) != null,
         resourcePath: this.resourcePath,
         normalizedName: null,
@@ -231,8 +233,8 @@ function DojoWebpackLoader(content){
             append: ""
         }
     };
-    if (module.isCore) module.normalizedName = resolveCoreModuleDependency('dojo', options.dojoCorePath, this.resourcePath, '.');
-    else if (module.isDijit) module.normalizedName = resolveCoreModuleDependency('dijit', options.dojoDijitPath, this.resourcePath, '.');
+    if (module.isCore) module.normalizedName = resolveCoreModuleDependency('dojo', options.packages.dojo, this.resourcePath, '.');
+    else if (module.isDijit) module.normalizedName = resolveCoreModuleDependency('dijit', options.packages.dijit, this.resourcePath, '.');
 
     // Parse module
     var content = preprocessModule(module, options, content);

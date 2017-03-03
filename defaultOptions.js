@@ -1,9 +1,5 @@
 module.exports = {
 
-    // Absolute paths to dojo modules
-    dojoCorePath: null,     // necessary
-    dojoDijitPath: null,    // optional - if dijit Widgets are used
-
     // Enables dojo/parser functionality for dijit widgets
     // - register each module in dijit package via dojo-webpack-loader/lib/dojo-require
     dojoParserDijitWidgets: true,  // works if dojoDijitPath set
