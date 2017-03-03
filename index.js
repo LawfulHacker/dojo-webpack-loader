@@ -1,3 +1,4 @@
+var loaderUtils = require("loader-utils");
 var defaultOptions = require("./defaultOptions");
 var path = require("path");
 var parser = require("./internal/parser");
@@ -214,18 +215,15 @@ function processNlsModule(module, parsed, options){
 
 function DojoWebpackLoader(content){
     if (this.cacheable) this.cacheable();
-
-    let packages = this._compiler.options.resolve.alias;
-
-    if (!packages.dojo) throw new Error("DojoWebpackLoader: dojo alias is not set");
     // console.log("-----------------------")
     // console.log(this.resourcePath);
 
     // Prepare options
-    var dojoWebpackLoaderOptions = this.query.dojoWebpackLoader;
-    var options = Object.assign({}, defaultOptions, dojoWebpackLoaderOptions);
-    options.staticHasFeatures = Object.assign({}, defaultOptions.staticHasFeatures, dojoWebpackLoaderOptions.staticHasFeatures);
-    options.packages = packages;
+    const options = Object.assign({}, defaultOptions, loaderUtils.getOptions(this));
+    options.staticHasFeatures = Object.assign({}, defaultOptions.staticHasFeatures, options.staticHasFeatures);
+    options.packages = this._compiler.options.resolve.alias;
+
+    if (!options.packages.dojo) throw new Error("DojoWebpackLoader: dojo alias is not set");
 
     // Prepare module
     var module = {
@@ -245,7 +243,7 @@ function DojoWebpackLoader(content){
         }
     };
 
-    module.normalizedName = normalizeDependencyName(packages, this.resourcePath, '.');
+    module.normalizedName = normalizeDependencyName(options.packages, this.resourcePath, '.');
 
     // Parse module
     var content = preprocessModule(module, options, content);
