@@ -60,6 +60,13 @@ function preprocessModule(module, options, content){
         module.inject.append = "})());";
     }
 
+    //support for dojo/domReady!
+    // "dojo/domReady!",  or  ,'dojo/domReady!'  -  both are included in case more than one module is required that doesn't return a variable
+    var domReadyRegExp = /([\"|\']dojo\/domReady![\'|\"]\,)|(\,\s*[\"|\']dojo\/domReady![\'|\"](?!\,))/;
+    var modifiedContent = content.replace(domReadyRegExp, '/* $& */')
+    var isModified = content.length !== modifiedContent.length;
+    content = isModified ? 'require("domready")(function(){' + modifiedContent + '});' : content;
+    
     return content;
 }
 
